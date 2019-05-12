@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
+"""Go through the mail XML files from a JPAY tablet and conver the mail to
+easy to read text files sorted into folders by the datetime and sender of
+each email."""
 
 import xml.etree.ElementTree as elementtree
 from datetime import datetime
 import os
 import shutil
 
-output_dir = './output/'
-attachments_path = './Mail/Attachments/'
-mailboxes = [
+OUTPUT_DIR = './output/'
+ATTACHMENTS_PATH = './Mail/Attachments/'
+MAILBOXES = [
     {
         'name': 'Inbox',
         'filename': './Mail/Inbox.xml',
@@ -25,24 +28,38 @@ mailboxes = [
     }
 ]
 
-type_folders = {
+TYPE_FOLDERS = {
     'Image': 'Img'
 }
 
+BODY_FILENAME = 'body.txt'
+
+
 def create_letter_directory(name, timestamp, name_value):
+    """Creates the directory for the specified letter"""
+
+    # Create the name for the letter folder.
     folder_name = timestamp.isoformat() + '-' + name_value
     folder_name = folder_name.replace(' ', '-')
     folder_name = folder_name.replace(':', '-')
-    folder_path = os.path.join(output_dir, name, folder_name)
+
+    folder_path = os.path.join(OUTPUT_DIR, name, folder_name)
     os.makedirs(folder_path, exist_ok=True)
     return folder_path
 
+
 def save_body(folder_path, body):
-    file_name = os.path.join(folder_path, 'body.txt')
+    """Saves the body of the letter to a file in the folder"""
+
+    file_name = os.path.join(folder_path, BODY_FILENAME)
     with open(file_name, "w") as body_file:
         body_file.write(body)
 
+
 def parse_attachments(attachments, dest_folder_path, letter_id):
+    """Go through the attachments for the letter and copy them
+    to the letter's directory"""
+
     for attachment in attachments:
         extension = ''
         name = ''
@@ -53,10 +70,10 @@ def parse_attachments(attachments, dest_folder_path, letter_id):
             if child.tag == 'Id':
                 name = child.text
             if child.tag == 'Type':
-                sub_folder = type_folders[child.text]
+                sub_folder = TYPE_FOLDERS[child.text]
 
         filename = name + '.' + extension
-        file_path = os.path.join(attachments_path,
+        file_path = os.path.join(ATTACHMENTS_PATH,
                                  letter_id,
                                  sub_folder,
                                  filename)
@@ -71,9 +88,13 @@ def parse_attachments(attachments, dest_folder_path, letter_id):
 
 
 def parse_letters(name, name_field, root):
+    """Go through the letters for the mailbox and write the body of each letter
+    to a file in a folder named for the letter's date and sender. Then process
+    attachments for the letter and save them to the same directory."""
+
     for letter in root:
         timestamp = ''
-        mailfrom = ''
+        name_value = ''
         attachments = []
         body = ''
         letter_id = None
@@ -96,20 +117,20 @@ def parse_letters(name, name_field, root):
         if (folder_path and body):
             save_body(folder_path, body)
 
-        if (attachments):
+        if attachments:
             parse_attachments(attachments, folder_path, letter_id)
 
+
 def parse_mailbox(name, filename, name_field):
+    """Grab the XML for the mailbox and go through the letters in the XML
+    root element."""
+
     tree = elementtree.parse(filename)
     root = tree.getroot()
     parse_letters(name, name_field, root)
 
 
-
-
-
-
-for mailbox in mailboxes:
+for mailbox in MAILBOXES:
     parse_mailbox(mailbox['name'],
-                    mailbox['filename'],
-                    mailbox['name_field'])
+                  mailbox['filename'],
+                  mailbox['name_field'])
